@@ -15,31 +15,7 @@ var fetchTracks = function (albumId, callback) {
   });
 };
 
-var fetchTrackURI= function (trackName, artistName, callback) {
-  var realCallback = callback;
-// console.log(callback);
-  if(callback === undefined) {
-    realCallback = artistName;
-  }
 
-  $.ajax({
-    url: 'https://api.spotify.com/v1/search' + "?q=" + trackName + '&type=track' + '&limit=50',
-    success: function(response) {
-      if(artistName === undefined) {
-       realCallback(response.tracks.items[0].uri);
-       return;
-     }
-
-     response.tracks.items.forEach(function(track){
-      // console.log(track.artists[0].name);
-      if(track.artists[0].name === artistName) {
-        realCallback(track.uri);
-        return;
-      }
-     });
-   },
- });
-};
 var searchAlbums = function (query) {
   $.ajax({
     url: 'https://api.spotify.com/v1/search',
@@ -83,7 +59,7 @@ var getTopTracks = function (id) {
 
 var getLatestSetlistByArtist = function (artistName, callback) {
   $.ajax({
-    url: '/result',
+    url: '/get_latest_sestlist',
     data: {
       artistName: artistName,
       type:'GET'
@@ -135,17 +111,55 @@ var createPlaylist = function (name, cb) {
   });
 };
 
-var addToPlaylist = function (trackURI, playlist) {
+var addToPlaylist = function (tracks, playlist) {
   $.ajax({
     url: '/add_to_playlist',
     data: {
-      trackURI: trackURI,
+      tracks: tracks,
       playlistID: playlist
     },
     success: function (response) {
       // console.log(response);
     }});
 };
+
+var makePlaylist = function(artistsStr) {
+
+  var artists = artistsStr.split('\n').map(function(artist){return artist.trim();});
+
+  createPlaylist('Festival Playlist Generator',  function(playlistResponse){ 
+    artists.forEach(function(artist){
+      getLatestSetlistByArtist(artist, function (setlistResponse) {
+        var tracks = [];
+        var songs = setlistResponse.getElementsByTagName("setlist")[0].getElementsByTagName("song");
+        for(var index =0; index < songs.length; index++) {
+          var songsOriginalArtist = artist;
+          if(songs[index].getElementsByTagName("cover").length > 0) {
+
+            songsOriginalArtist = songs[index].getElementsByTagName("cover")[0].getAttribute("name");
+          }
+          if(songsOriginalArtist.toUpperCase() === artist.toUpperCase()) {
+
+            var name = songs[index].getAttribute("name");
+            console.log(name);
+            if(name !== undefined && name !== null && artist !== undefined && artist !== null) {
+
+
+              tracks.push({
+                artistName: artist,
+                name: name
+              });
+            }
+          }
+
+
+        }
+        addToPlaylist(tracks, playlistResponse.toString());  
+        // addToPlaylist(setlistResponse, playlistResponse.toString());  
+      });
+    });
+  });
+}
 
 $("document").ready(function(){
   var code = getURLParameters("code");
@@ -168,37 +182,8 @@ document.getElementById('search-form').addEventListener('submit', function (e) {
     }
   });
 
-  
-  var tracksNames = [];
-  getLatestSetlistByArtist($('#query').val(), function (response) {
-    // response.forEach(function(elem){console.log(elem);});
-    console.log(response);
-
-
-    createPlaylist('Festival generator',  function(playlistResponse){ 
-      var songs = response.getElementsByTagName("setlist")[0].getElementsByTagName("song");
-      for(var index =0; index < songs.length; index++) {
-        var name = songs[index].getAttribute("name");
-        console.log(name);
-
-        tracksNames.push(name);
-
-
-      }
-
-      var songsURI = "spotify:track:4CzTgOmc3Sdm4EgKQWzjQl,spotify:track:1uRxyAup7OYrlh2SHJb80N,spotify:track:3dAxzv7hkxipbuWJaOMzAl,spotify:track:4dPKQxaraW6CG1rTBzV6DW,spotify:track:5CKHhg31HcYYhwUeeGqvhq,spotify:track:1M0g1beKC4H9gbrOiSayHW,spotify:track:1bSpwPhAxZwlR2enJJsv7U,spotify:track:3A9vIxzGBjEfqmDK7H9exS,spotify:track:41yIvlFgvGwxq8qTqAR7eG,spotify:track:3LhtqibvTtjOUrzKs7Vsz1,spotify:track:5xwpXWWkfJRqg1S27oVxh4,spotify:track:7JSdsfOoM8ueAuqPOrjc4T,spotify:track:4m0Vgr48VFaMYw0Sp1ozJu,spotify:track:3agr7Xjyimvb3EmSgsXvQy,spotify:track:4Iyo50UoYhuuYORMLrGDci,spotify:track:5k7VKj1Xwy5DjO4B0PdAOb,spotify:track:7xqeIdLJSf3bgmZ7vUvHrE,spotify:track:4eruRiSfDY1jdT03hjyi0i,spotify:track:56Z7hbyMrndw1naxb6I5Oi,spotify:track:5AiNZnMDCWwujIENPj9PV9,spotify:track:2nTsKOXIVGDf2iPeVQO2Gm,spotify:track:1i1fxkWeaMmKEB4T7zqbzK,spotify:track:045sp2JToyTaaKyXkGejPy,spotify:track:5lLuArl5DPSd0pYVl9KOWD".split(',');
-      tracksNames.forEach(function(trackName) {
-        fetchTrackURI(trackName,function(URIResponse){
-        // console.log(response);
-        console.log(URIResponse.tracks.items[0].uri);
-        // songsURI.push(URIResponse.tracks.items[0].uri);
-
-      });
-
-      });
-      addToPlaylist(songsURI, playlistResponse.toString());  
-    });
-  });
+  var artistName = $('#query').val();
+  makePlaylist(artistName);  
 
 
 

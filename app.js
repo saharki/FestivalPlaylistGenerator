@@ -13,6 +13,7 @@ var querystring = require('querystring');
 var cookieParser = require('cookie-parser');
 var SpotifyWebApi = require('spotify-web-api-node');
 var curl = require('curlrequest');
+var async = require('async');
 var $;
 require("jsdom").env("", function(err, window) {
   if (err) {
@@ -26,7 +27,7 @@ require("jsdom").env("", function(err, window) {
 var client_id = 'a4b28ff9e82445b0a8e01b66dcae5526'; // Your client id
 var client_secret = '025907fe37934da8acf86363070c7ed1'; // Your secret
 var redirect_uri = 'http://localhost:8888/test.html'; // Your redirect uri
-
+var PARALLEL_REQUESTS_LIMIT = 1;
 /**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
@@ -155,7 +156,7 @@ app.get('/refresh_token', function(req, res) {
 
 });
 
-app.get('/result', function(req, res) {
+app.get('/get_latest_sestlist', function(req, res) {
   var options = {
     url: 'https://api.setlist.fm',
     path: '/rest/0.1/search/setlists',
@@ -191,12 +192,12 @@ app.get('/result', function(req, res) {
 
 
 var spotifyApi = new SpotifyWebApi({
-    clientId : 'a4b28ff9e82445b0a8e01b66dcae5526',
-    clientSecret : '025907fe37934da8acf86363070c7ed1',
-    redirectUri : 'http://localhost:8888/test.html'
-  });
+  clientId : 'a4b28ff9e82445b0a8e01b66dcae5526',
+  clientSecret : '025907fe37934da8acf86363070c7ed1',
+  redirectUri : 'http://localhost:8888/test.html'
+});
 app.get('/get_access_token', function(req, res){
-  
+
 
   var code = req.query.code;
   spotifyApi.authorizationCodeGrant(code)
@@ -237,7 +238,7 @@ app.get('/create_playlist', function(req, res){
   //  --data "{\"name\":\"NewPlaylistttttt\",\"public\":false}"
 
 });
-
+var count =0;
 app.get('/add_to_playlist', function(req, res){
 
   // spotifyApi.addTracksToPlaylist('saha.rki', res.query.playlistID, [res.query.trackURI])
@@ -246,19 +247,84 @@ app.get('/add_to_playlist', function(req, res){
   // }, function(err) {
   //   console.log('Something went wrong!', err);
   // });
-
-  console.log(req.query.playlistID +" " + req.query.trackURI);
-var opts = {
-    url: 'https://api.spotify.com/v1/users/saha.rki/playlists/'+ req.query.playlistID +'/tracks?position=0&uris='+req.query.trackURI,
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      Authorization: "Bearer " + spotifyApi.getAccessToken(),
+  console.log(req.query.tracks);
+  var tracks = Object.keys(req.query.tracks).map(function(k) { return req.query.tracks[k];   });
+  console.log(tracks);
+  
+  var tracksURIs = [];
+  console.log(tracks.length);
+  async.eachLimit(tracks, PARALLEL_REQUESTS_LIMIT,function(track, callback){
+     // async.each([{name: 'all my life', artistName: 'foo fighters'},{name: 'desert island disk', artistName: 'radiohead'}],function(track, callback){
+    console.log(track.name);
+    var name = track.name;
+    var artistName = track.artistName;
+    if(name === undefined || name === null || artistName === undefined || artistName === null) {
+      callback();
+      return;
     }
-  }
-  curl.request(opts, function(response){res.send(response);});
+    fetchTrackURI(name, artistName, function(response){
+    if(response !== undefined) {  
+     tracksURIs.push(response);
+     console.log(track.name+" - "+response);
+    }
+      callback();
+    });
+  }, function(err){
+    console.log("hi ");
+    if(err) console.log(err);
+    var opts = {
+      url: 'https://api.spotify.com/v1/users/saha.rki/playlists/'+ req.query.playlistID +'/tracks?position=0&uris='+ tracksURIs.toString(),
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        Authorization: "Bearer " + spotifyApi.getAccessToken(),
+      }
+    }
+    
+    curl.request(opts, function(response){console.log(response);res.send(response);});
+  });
 
 });
+
+
+var fetchTrackURI= function (trackName, artistName, callback) {
+  var realCallback = callback;
+
+
+
+if(callback === undefined) {
+  realCallback = artistName;
+  artistName = undefined;
+}
+
+$.ajax({
+  url: 'https://api.spotify.com/v1/search' + "?q=" + trackName + '&type=track' + '&limit=50',
+  timeout: 10000,
+  success: function(response) {
+    // console.log(response);
+    if(artistName === undefined) {
+     realCallback(response.tracks.items[0].uri);
+     return;
+   }
+    var tracks = Object.keys(response.tracks.items).map(function(k) { return response.tracks.items[k] });
+    // console.log(tracks.length);
+    for(var index = 0; index<tracks.length; ++index) {
+      console.log(tracks[index].artists[0].name);
+      if(tracks[index].artists[0].name.toUpperCase() === artistName.toUpperCase()) {
+         console.log(++count);
+      // console.log(track.artists[0].name);
+        realCallback(tracks[index].uri);
+        return;
+      }
+
+    }
+    realCallback();
+ },
+ error: function(xhr, ajaxOptions, err) {console.log("Fetch Error: "+err); realCallback();}
+
+});
+};
+
 
 console.log('Listening on 8888');
 app.listen(8888);
