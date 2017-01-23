@@ -59,7 +59,7 @@ var getTopTracks = function (id) {
 
 var getLatestSetlistByArtist = function (artistName, callback) {
   $.ajax({
-    url: '/get_latest_sestlist',
+    url: '/get_latest_setlist',
     data: {
       artistName: artistName,
       type:'GET'
@@ -129,6 +129,9 @@ var makePlaylist = function(artistsStr) {
 
   createPlaylist('Festival Playlist Generator',  function(playlistResponse){ 
     artists.forEach(function(artist){
+      if(artist === '' || artist === undefined || artist === null) {
+        return;
+      }
       getLatestSetlistByArtist(artist, function (setlistResponse) {
         var tracks = [];
         var songs = setlistResponse.getElementsByTagName("setlist")[0].getElementsByTagName("song");
@@ -182,7 +185,7 @@ document.getElementById('search-form').addEventListener('submit', function (e) {
     }
   });
 
-  var artistName = $('#query').val();
+  var artistName = $('#query').val().trim();
   makePlaylist(artistName);  
 
 
