@@ -9,7 +9,7 @@
 
 var express = require('express'); // Express web server framework
 var request = require('request'); // "Request" library
-var querystring = require('querystring');
+var querystring = require('querystring'); 
 var cookieParser = require('cookie-parser');
 var SpotifyWebApi = require('spotify-web-api-node');
 var spotifyHelper = require('./spotifyHelper');
@@ -165,7 +165,7 @@ app.get('/get_latest_setlist', function(req, res) {
       res.setHeader('content-type', 'text/xml');
       res.send(data);
     }
-  );
+    );
 });
 
 
@@ -199,7 +199,7 @@ app.get('/get_access_token', function(req, res){
 app.get('/create_playlist', function(req, res){
   getSpotifyUserInfo(spotifyApi.getAccessToken() , 
     function(err, userResponse, userBody ){
-console.log(userBody)
+      console.log(userBody)
       var opts = {
         url: 'https://api.spotify.com/v1/users/'+ userBody.id +'/playlists',
         method: 'POST',
@@ -215,123 +215,39 @@ console.log(userBody)
         })
       }
       curl.request(opts, function(err, data, meta){res.send(JSON.parse(data).id);} );
-  //  --data "{\"name\":\"NewPlaylistttttt\",\"public\":false}"
 });
 
 });
 var count =0;
 app.get('/add_to_playlist', function(req, res){
 
-  // spotifyApi.addTracksToPlaylist('saha.rki', res.query.playlistID, [res.query.trackURI])
-  // .then(function(data) {
-  //   console.log('Added tracks to playlist!');
-  // }, function(err) {
-  //   console.log('Something went wrong!', err);
-  // });
-  console.log(req.query.tracks);
-  if(req.query.tracks === undefined ||req.query.tracks === null || req.query.tracks.length <= 0) {
-    console.log("No tracks Available.");
-    return;
-  }
-  var tracks = Object.keys(req.query.tracks).map(function(k) { return req.query.tracks[k];   });
-  console.log(tracks);
-  
-  var tracksURIs = [];
-  console.log(tracks.length);
-  async.eachLimit(tracks, PARALLEL_REQUESTS_LIMIT,function(track, callback){
-     // async.each([{name: 'all my life', artistName: 'foo fighters'},{name: 'desert island disk', artistName: 'radiohead'}],function(track, callback){
-      console.log(track.name);
-      var name = track.name;
-      var artistName = track.artistName;
-      if(name === undefined || name === null || artistName === undefined || artistName === null) {
-        callback();
-        return;
-      }
-      fetchTrackURI(name, artistName, function(response){
-        if(response !== undefined) {  
-         tracksURIs.push(response);
-         console.log(track.name+" - "+response);
-       }
-       callback();
-     });
-    }, function(err){
-      console.log("Added to playlist.");
-      if(err) console.log(err);
-
-      getSpotifyUserInfo(spotifyApi.getAccessToken() , 
-        function(err, userResponse, userBody ){
-
-          var opts = {
-            url: 'https://api.spotify.com/v1/users/' + userBody.id + '/playlists/'+ req.query.playlistID +'/tracks?position=0&uris='+ tracksURIs.toString(),
-            method: 'POST',
-            headers: {
-              accept: 'application/json',
-              Authorization: "Bearer " + spotifyApi.getAccessToken(),
-            }
-          }
-
-          curl.request(opts, function(response){console.log(response);res.send(response);});
-        });
+  spotifyHelper.addTracksToPlaylist(req.query.playlistID, req.query.tracks, spotifyApi.getAccessToken(), 
+    function(response){
+      // console.log(response);
+      res.send(response);
     });
-
 });
 
 
-var fetchTrackURI= function (trackName, artistName, callback) {
-  var realCallback = callback;
+app.get('/festivals_list', function(req, res){
+  
+  festivalScraper.getFestivalsList(function(response){
+    res.send(response);
 
-
-
-  if(callback === undefined) {
-    realCallback = artistName;
-    artistName = undefined;
-  }
-
-  $.ajax({
-    url: 'https://api.spotify.com/v1/search' + "?q=" + trackName + '&type=track' + '&limit=50',
-    timeout: 10000,
-    success: function(response) {
-    // console.log(response);
-    if(artistName === undefined) {
-     realCallback(response.tracks.items[0].uri);
-     return;
-   }
-   var tracks = Object.keys(response.tracks.items).map(function(k) { return response.tracks.items[k] });
-    // console.log(tracks.length);
-    for(var index = 0; index<tracks.length; ++index) {
-      console.log(tracks[index].artists[0].name);
-      if(tracks[index].artists[0].name.toUpperCase() === artistName.toUpperCase()) {
-       console.log(++count);
-      // console.log(track.artists[0].name);
-      realCallback(tracks[index].uri);
-      return;
-    }
-
-  }
-  realCallback();
-},
-error: function(xhr, ajaxOptions, err) {console.log("Fetch Error: "+err); realCallback();}
-
+  });
 });
-};
 
-var getSpotifyUserInfo = function (access_token, callback) {
-  var options = {
-    url: 'https://api.spotify.com/v1/me',
-    headers: { 'Authorization': 'Bearer ' + access_token },
-    json: true
-  };
 
-  // use the access token to access the Spotify Web API
-  request.get(options, callback);
-};
+
+app.get('/get_artists_by_festival', function(req, res){
+  
+  festivalScraper.getArtistsByFestivalName(req.query.festivalName, function(response){
+    res.send(response);
+
+  });
+});
+
 
 console.log('Listening on 8888');
 app.listen(8888);
-
-
-
-
-// festivalScraper.getArtistsByFestivalName('rock werchter 2017', console.log);
-// festivalScraper.getFestivalsList(console.log);
 

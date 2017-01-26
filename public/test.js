@@ -38,12 +38,18 @@ var searchArtist = function (query, handler) {
       type: 'artist'
     },
     success: function (response) {
-      handler(response.artists.items[0].id);
+      if(response.artists.items.length < 1){ 
+        handler();
+      }
+      else {
+
+        handler(response.artists.items[0].id);
+      }
     }
   });
 };
 
-var getTopTracks = function (id) {
+var getTopTracksByArtistID = function (id, callback) {
   $.ajax({
     url: 'https://api.spotify.com/v1/artists/' + id + '/top-tracks',
     data: {
@@ -53,6 +59,7 @@ var getTopTracks = function (id) {
     },
     success: function (response) {
       response.tracks.forEach(function(track){console.log(track.name);});
+      callback(response);
     }
   });
 };
@@ -92,6 +99,18 @@ results.addEventListener('click', function (e) {
   }
 });
 
+
+document.getElementById('festivalsList').addEventListener("change", function(){
+  getArtistsByFestivalName($('#festivalsList').val(), function(artistsList){
+    $('#query').text("");
+    artistsList.forEach(function(artist){
+      console.log(artist);
+      $('#query').text( $('#query').text() + artist.toString() + '\n');
+    });
+  });
+});
+
+
 var refreshAccessToken = function (code) {
   $.ajax({
     url: 'https://accounts.spotify.com/api/token',
@@ -119,11 +138,22 @@ var addToPlaylist = function (tracks, playlist) {
       playlistID: playlist
     },
     success: function (response) {
-      // console.log(response);
+      console.log('done!');
     }});
 };
 
-var makePlaylist = function(artistsStr) {
+
+var getArtistsByFestivalName = function (festivalName, callback) {
+  $.ajax({
+    url: '/get_artists_by_festival',
+    data: {
+      festivalName: festivalName
+    },
+    success: callback
+  });
+};
+
+var makePlaylistByArtists = function(artistsStr) {
 
   var artists = artistsStr.split('\n').map(function(artist){return artist.trim();});
 
@@ -157,10 +187,106 @@ var makePlaylist = function(artistsStr) {
 
 
         }
-        addToPlaylist(tracks, playlistResponse.toString());  
+        if(tracks.length > 0) {
+
+          addToPlaylist(tracks, playlistResponse.toString());  
+        }
+        else {
+          searchArtist(artist, function(artistID){
+            console.log(artist + "ID: "+artistID);
+            getTopTracksByArtistID(artistID, function(tracksResponse) {
+              console.log(tracksResponse);
+              var tracks = [];
+              tracksResponse.tracks.forEach(function(track){
+
+                tracks.push({
+                  artistName: artist,
+                  name: track.name
+                });
+              });
+              addToPlaylist(tracks, playlistResponse.toString());  
+            });
+          })
+        }
         // addToPlaylist(setlistResponse, playlistResponse.toString());  
       });
     });
+  });
+}
+
+var makePlaylistByFestival = function(festivalName) {
+
+  getArtistsByFestivalName(festivalName.trim(), function(artistsOfFestival) {
+
+    createPlaylist('Festival Playlist Generator',  function(playlistResponse){ 
+      artistsOfFestival.forEach(function(artist){
+        if(artist === '' || artist === undefined || artist === null) {
+          return;
+        }
+        getLatestSetlistByArtist(artist, function (setlistResponse) {
+          var tracks = [];
+          var songs = setlistResponse.getElementsByTagName("setlist")[0].getElementsByTagName("song");
+          for(var index =0; index < songs.length; index++) {
+            var songsOriginalArtist = artist;
+            if(songs[index].getElementsByTagName("cover").length > 0) {
+
+              songsOriginalArtist = songs[index].getElementsByTagName("cover")[0].getAttribute("name");
+            }
+            if(songsOriginalArtist.toUpperCase() === artist.toUpperCase()) {
+
+              var name = songs[index].getAttribute("name");
+              console.log(name);
+              if(name !== undefined && name !== null && artist !== undefined && artist !== null) {
+
+
+                tracks.push({
+                  artistName: artist,
+                  name: name
+                });
+              }
+            }
+
+
+          }
+
+          if(tracks.length > 0) {
+
+            addToPlaylist(tracks, playlistResponse.toString());  
+          }
+          else {
+            searchArtist(artist, function(artistID){
+              if(artistID === undefined || artistID === null) return;
+              console.log(artist + "ID: "+artistID);
+              getTopTracksByArtistID(artistID, function(tracksResponse) {
+                console.log(tracksResponse);
+                addToPlaylist(tracksResponse, playlistResponse.toString());  
+              });
+            })
+          }
+          // addToPlaylist(setlistResponse, playlistResponse.toString());  
+        });
+      });
+    });
+  } );
+}
+
+
+var getFestivalsLists = function(callback) {
+  $.ajax({
+    url: '/festivals_list',
+    type: 'GET',
+    success: callback
+  });
+};
+
+var updateFestivalsMenu = function(festivalsList) {
+  console.log(festivalsList)
+  $('#festivalsList').empty();
+
+  festivalsList.forEach(function(festivalName){
+    var option = document.createElement("option");
+    option.innerHTML = festivalName;
+    $('#festivalsList').append(option);
   });
 }
 
@@ -172,7 +298,12 @@ $("document").ready(function(){
     type: 'GET',
     success: function(response){accessToken = response.toString();}
   });
+
+  getFestivalsLists(updateFestivalsMenu);
+
 });
+
+
 
 document.getElementById('search-form').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -186,7 +317,10 @@ document.getElementById('search-form').addEventListener('submit', function (e) {
   });
 
   var artistName = $('#query').val().trim();
-  makePlaylist(artistName);  
+  var festivalName = $('#festivalsList').val();
+  console.log(artistName);
+  makePlaylistByArtists(artistName);  
+  // makePlaylistByFestival(festivalName);
 
 
 

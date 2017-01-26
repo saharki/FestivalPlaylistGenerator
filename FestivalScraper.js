@@ -88,7 +88,6 @@ module.exports.getFestivalsList = getFestivalsList  = function (callback) {
 // getFestivalsList(function (){ console.log(festivalsList.indexOf('ROCK WERCHTER 2017'));});
 
 module.exports.getArtistsByFestivalName = getArtistsByFestivalName = function (festivalName, artistsCallback) {
-
   async.series([
     function(callback){
 
@@ -118,4 +117,5 @@ module.exports.getArtistsByFestivalName = getArtistsByFestivalName = function (f
     });
   });
 };
+
 
