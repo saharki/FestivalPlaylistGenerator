@@ -1,5 +1,4 @@
 var request = require('request');
-var xml2js = require('xml2js');
 var curl = require('curlrequest');
 var async = require('async');
 var $;
@@ -34,7 +33,7 @@ module.exports.getLatestSetlistByArtist = getLatestSetlistByArtist = function (a
 
   // });
 
-  var parseString = xml2js.parseString;
+  // var parseString = xml2js.parseString;
   var https = require('https'); 
   var data = '';
   https.get('https://api.setlist.fm/rest/0.1/search/setlists?artistName='+ artistName, function(httpres) {

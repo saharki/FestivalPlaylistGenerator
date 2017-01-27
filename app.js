@@ -16,15 +16,7 @@ var spotifyHelper = require('./spotifyHelper');
 var curl = require('curlrequest');
 var async = require('async');
 var festivalScraper = require('./FestivalScraper.js');
-var $;
-require("jsdom").env("", function(err, window) {
-  if (err) {
-    console.error(err);
-    return;
-  }
 
-  $ = require("jquery")(window);
-});
 
 var client_id = 'a4b28ff9e82445b0a8e01b66dcae5526'; // Your client id
 var client_secret = '025907fe37934da8acf86363070c7ed1'; // Your secret

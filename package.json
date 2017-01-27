@@ -1,0 +1,34 @@
+{
+  "name": "festival-playlist-generator",
+  "version": "1.0.0",
+  "description": "Exporting playlist by artists' latest setlists",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saharki/FestivalPlaylistGenerator.git"
+  },
+  "keywords": [
+    "playlist",
+    "spotify",
+    "festival",
+    "artist"
+  ],
+  "author": "Sahar Kimchi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/saharki/FestivalPlaylistGenerator/issues"
+  },
+  "homepage": "https://github.com/saharki/FestivalPlaylistGenerator#readme",
+  "dependencies": {
+    "cheerio": "^0.22.0",
+    "cookie-parser": "^1.4.3",
+    "curlrequest": "^1.0.1",
+    "express": "^4.14.0",
+    "jquery": "^3.1.1",
+    "jsdom": "^9.9.1",
+    "spotify-web-api-node": "^2.3.6"
+  }
+}
