@@ -42,7 +42,7 @@ module.exports = function (){
   var stateKey = 'spotify_auth_state';
 
   var app = express();
-
+app.set('port', (process.env.PORT || 5000));
   app.use(express.static(__dirname + '/public'))
   .use(cookieParser());
 
@@ -243,6 +243,9 @@ module.exports = function (){
 
 
   console.log('Listening on 5000');
-  app.listen(5000);
+  app.listen(app.get('port'), function() {
+  console.log('FPG app is running on port', app.get('port'));
+});
+  // app.listen(5000);
 
 }
